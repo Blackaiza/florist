@@ -6,7 +6,7 @@ services:
       dockerfile: docker/Dockerfile.prod
       context: .
     volumes:
-      - .bungabucket:/var/www/html  # host folder mapped to container
+      - .:/var/www/html  # host folder mapped to container
     environment:
       APP_ENV: production
       APP_DEBUG: false
