@@ -47,12 +47,12 @@ jobs:
 
             # Create folder if missing
             mkdir -p $DIR
+            cd $DIR
 
             # Clone or pull repo
             if [ ! -d "$DIR/.git" ]; then
               git clone --branch $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git $DIR
             else
-              cd $DIR
               git reset --hard HEAD
               git pull origin $BRANCH
             fi
@@ -61,16 +61,16 @@ jobs:
 
             # Generate APP_KEY for dev automatically
             if [ "$BRANCH" != "main" ]; then
-              TEMP_KEY=$(docker run --rm -v $DIR:/var/www/html -w /var/www/html php:8.3-fpm bash -c "composer install --no-dev && php artisan key:generate --show")
-              APP_KEY=$TEMP_KEY
+              APP_KEY=$(docker run --rm -v $DIR:/var/www/html -w /var/www/html php:8.3-fpm \
+                bash -c "apt-get update && apt-get install -y unzip git && php -r 'copy(\"https://getcomposer.org/installer\", \"composer-setup.php\");' && php composer-setup.php --install-dir=/usr/local/bin --filename=composer && composer install --no-dev && php artisan key:generate --show")
             fi
-            
+
             cat > $DIR/.env <<EOL
             APP_NAME=$APP_NAME
             APP_ENV=$APP_ENV
             APP_KEY=$APP_KEY
             APP_DEBUG=$APP_DEBUG
-            APP_URL=${APP_ENV=="production" && echo "https://bungabucket.my" || echo "http://dev.bungabucket.my"}
+            APP_URL=$( [ "$BRANCH" == "main" ] && echo "https://bungabucket.my" || echo "http://dev.bungabucket.my" )
             APP_ADMIN_URL=admin-manage
             APP_TIMEZONE=Asia/Kuala_Lumpur
 

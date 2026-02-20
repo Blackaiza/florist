@@ -1,18 +1,25 @@
+# Dockerfile.prod
 FROM php:8.3-fpm
 
+# System dependencies
 RUN apt-get update && apt-get install -y \
     git unzip libzip-dev libpng-dev libonig-dev libxml2-dev \
     zip curl
 
+# PHP extensions
 RUN docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd
 
+# Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-WORKDIR /var/www/bungabucket
+# Standard working directory inside container
+WORKDIR /var/www/html
 
+# Copy composer files first and install dependencies
 COPY composer.json composer.lock ./
 RUN composer install --optimize-autoloader --no-dev
 
+# Copy the rest of the app
 COPY . .
 
-# No key generate, set from .env
+# No APP_KEY generation here; use .env on host

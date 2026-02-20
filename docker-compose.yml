@@ -3,42 +3,34 @@ version: "3.9"
 services:
   app:
     build:
+      dockerfile: docker/Dockerfile.prod
       context: .
-      dockerfile: docker/Dockerfile.dev  # override in prod
-    container_name: laravel_app
-    ports:
-      - "8000:80"
     volumes:
-      - .:/var/www/html
+      - ./bungabucket:/var/www/html  # host folder mapped to container
     environment:
-      APP_ENV: local
-      DB_HOST: mysql
-      DB_DATABASE: florist
-      DB_USERNAME: skadi
-      DB_PASSWORD: aizat2002
-    depends_on:
-      - mysql
-      - redis
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_KEY: ${APP_KEY}            # set via SSH deploy
+    ports:
+      - "80:80"
+      - "443:443"
 
   mysql:
-    image: mysql:8.0
+    image: mysql:8
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: florist
-      MYSQL_USER: skadi
-      MYSQL_PASSWORD: aizat2002
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
     ports:
       - "3306:3306"
-    volumes:
-      - sail-mysql:/var/lib/mysql
 
   redis:
-    image: redis:alpine
+    image: redis:7
     ports:
       - "6379:6379"
-    volumes:
-      - sail-redis:/data
 
 volumes:
-  sail-mysql:
-  sail-redis:
+  mysql_data:
