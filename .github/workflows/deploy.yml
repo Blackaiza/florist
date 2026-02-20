@@ -3,8 +3,8 @@ name: Deploy Laravel (Docker)
 on:
   push:
     branches:
-      - main   # production
-      - dev    # development
+      - main   # prod
+      - dev    # dev
 
 jobs:
   deploy:
@@ -19,60 +19,58 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
           script: |
-            set -e  # Exit on any error
+            BRANCH=${GITHUB_REF##*/}
 
-            # Determine branch / environment
-            if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
-              DIR="/var/www/bungabucket"
+            if [ "$BRANCH" == "main" ]; then
+              DIR="/home/${USER}/bungabucket"
               COMPOSE="docker-compose.prod.yml"
-              APP_NAME="Bunga Bucket"
               APP_ENV="production"
+              APP_DEBUG=false
+              APP_NAME="Bunga Bucket"
               APP_KEY="${{ secrets.PROD_APP_KEY }}"
-              APP_DEBUG="false"
-              APP_URL="https://bungabucket.my"
               DB_NAME="${{ secrets.PROD_DB_NAME }}"
               DB_USER="${{ secrets.PROD_DB_USERNAME }}"
               DB_PASS="${{ secrets.PROD_DB_PASSWORD }}"
-              QUEUE="database"
+              QUEUE_CONNECTION="database"
             else
-              DIR="/var/www/bungabucket_dev"
+              DIR="/home/${USER}/bungabucket_dev"
               COMPOSE="docker-compose.dev.yml"
-              APP_NAME="Bunga Bucket Dev"
               APP_ENV="local"
-              APP_KEY="${{ secrets.DEV_APP_KEY }}"
-              APP_DEBUG="true"
-              APP_URL="http://dev.bungabucket.my"
+              APP_DEBUG=true
+              APP_NAME="Bunga Bucket Dev"
               DB_NAME="${{ secrets.DEV_DB_NAME }}"
               DB_USER="${{ secrets.DEV_DB_USERNAME }}"
               DB_PASS="${{ secrets.DEV_DB_PASSWORD }}"
-              QUEUE="sync"
+              QUEUE_CONNECTION="sync"
             fi
 
-            echo "Deploying branch ${GITHUB_REF##*/} to $DIR"
-
-            # Create directory and set permissions
+            # Create folder if missing
             mkdir -p $DIR
-            chown -R $USER:$USER $DIR
-            chmod -R 755 $DIR
 
             # Clone or pull repo
             if [ ! -d "$DIR/.git" ]; then
-              git clone --branch ${GITHUB_REF##*/} https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git $DIR
+              git clone --branch $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git $DIR
             else
               cd $DIR
               git reset --hard HEAD
-              git pull origin ${GITHUB_REF##*/}
+              git pull origin $BRANCH
             fi
 
             cd $DIR
-            cat > .env <<EOL
+
+            # Generate APP_KEY for dev automatically
+            if [ "$BRANCH" != "main" ]; then
+              TEMP_KEY=$(docker run --rm -v $DIR:/var/www/html -w /var/www/html php:8.3-fpm bash -c "composer install --no-dev && php artisan key:generate --show")
+              APP_KEY=$TEMP_KEY
+            fi
+            
+            cat > $DIR/.env <<EOL
             APP_NAME=$APP_NAME
             APP_ENV=$APP_ENV
             APP_KEY=$APP_KEY
             APP_DEBUG=$APP_DEBUG
-            APP_URL=$APP_URL
+            APP_URL=${APP_ENV=="production" && echo "https://bungabucket.my" || echo "http://dev.bungabucket.my"}
             APP_ADMIN_URL=admin-manage
             APP_TIMEZONE=Asia/Kuala_Lumpur
 
@@ -84,7 +82,7 @@ jobs:
             DB_PASSWORD=$DB_PASS
 
             CACHE_STORE=file
-            QUEUE_CONNECTION=$QUEUE
+            QUEUE_CONNECTION=$QUEUE_CONNECTION
             SESSION_DRIVER=file
 
             REDIS_HOST=redis
@@ -92,8 +90,6 @@ jobs:
             REDIS_PORT=6379
             EOL
 
-            # Run Docker Compose
-            docker compose --env-file .env -f docker-compose.yml -f $COMPOSE down
-            docker compose --env-file .env -f docker-compose.yml -f $COMPOSE up -d --build
-
-            echo "Deployment completed!"
+            # Deploy Docker
+            docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE down
+            docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE up --build -d
