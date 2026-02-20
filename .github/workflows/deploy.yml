@@ -52,30 +52,27 @@ jobs:
               DIR="/var/www/bungabucket_dev"
               COMPOSE="docker-compose.dev.yml"
               # Generate dev .env
-              cat > $DIR/.env <<EOL
-              APP_NAME=Bunga Bucket Dev
-              APP_ENV=local
-              APP_KEY=${{ secrets.DEV_APP_KEY }}
-              APP_DEBUG=true
-              APP_URL=http://dev.bungabucket.my
-              APP_ADMIN_URL=admin-manage
-              APP_TIMEZONE=Asia/Kuala_Lumpur
-
-              DB_CONNECTION=mysql
-              DB_HOST=mysql
-              DB_PORT=3306
-              DB_DATABASE=${{ secrets.DEV_DB_NAME }}
-              DB_USERNAME=${{ secrets.DEV_DB_USERNAME }}
-              DB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}
-
-              CACHE_STORE=file
-              QUEUE_CONNECTION=sync
-              SESSION_DRIVER=file
-
-              REDIS_HOST=redis
-              REDIS_PASSWORD=null
-              REDIS_PORT=6379
-              EOL
+            cat > $DIR/.env <<EOL
+            APP_NAME=Bunga Bucket Dev
+            APP_ENV=local
+            APP_KEY=${{ secrets.DEV_APP_KEY }}
+            APP_DEBUG=true
+            APP_URL=http://dev.bungabucket.my
+            APP_ADMIN_URL=admin-manage
+            APP_TIMEZONE=Asia/Kuala_Lumpur
+            DB_CONNECTION=mysql
+            DB_HOST=mysql
+            DB_PORT=3306
+            DB_DATABASE=${{ secrets.DEV_DB_NAME }}
+            DB_USERNAME=${{ secrets.DEV_DB_USERNAME }}
+            DB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}
+            CACHE_STORE=file
+            QUEUE_CONNECTION=sync
+            SESSION_DRIVER=file
+            REDIS_HOST=redis
+            REDIS_PASSWORD=null
+            REDIS_PORT=6379
+            EOL
             fi
 
             # Git pull / clone
