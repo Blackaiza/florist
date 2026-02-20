@@ -5,7 +5,7 @@ services:
     build:
       dockerfile: docker/Dockerfile.dev
     volumes:
-      - .:/var/www/html
+      - .bungabucket_dev:/var/www/html
     environment:
       APP_ENV: local
       APP_DEBUG: true
