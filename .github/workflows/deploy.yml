@@ -1,87 +1,79 @@
-- name: SSH Deploy
-  uses: appleboy/ssh-action@v1.0.3
-  with:
-    host: ${{ secrets.VPS_HOST }}
-    username: ${{ secrets.VPS_USER }}
-    key: ${{ secrets.VPS_SSH_KEY }}
-    script: |
-      BRANCH=${GITHUB_REF##*/}
+name: Deploy
 
-      # Set deploy paths
-      if [ "$BRANCH" == "main" ]; then
-        DIR="/home/${USER}/bungabucket"
-        COMPOSE="docker-compose.prod.yml"
-        APP_ENV="production"
-        APP_DEBUG=false
-        APP_NAME="Bunga Bucket"
-        APP_KEY="${{ secrets.PROD_APP_KEY }}"
-        DB_NAME="${{ secrets.PROD_DB_NAME }}"
-        DB_USER="${{ secrets.PROD_DB_USERNAME }}"
-        DB_PASS="${{ secrets.PROD_DB_PASSWORD }}"
-        QUEUE_CONNECTION="database"
-      else
-        DIR="/home/${USER}/bungabucket_dev"
-        COMPOSE="docker-compose.dev.yml"
-        APP_ENV="local"
-        APP_DEBUG=true
-        APP_NAME="Bunga Bucket Dev"
-        DB_NAME="${{ secrets.DEV_DB_NAME }}"
-        DB_USER="${{ secrets.DEV_DB_USERNAME }}"
-        DB_PASS="${{ secrets.DEV_DB_PASSWORD }}"
-        QUEUE_CONNECTION="sync"
-      fi
+on:
+  push:
+    branches:
+      - main
+      - dev
 
-      # Create folder if missing, fix permissions
-      mkdir -p $DIR
-      chown -R ${USER}:${USER} $DIR
-      chmod -R 755 $DIR
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-      # Clone or pull repo
-      if [ ! -d "$DIR/.git" ]; then
-        git clone --branch $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git $DIR
-      else
-        cd $DIR
-        git reset --hard HEAD
-        git pull origin $BRANCH
-      fi
+    steps:
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            BRANCH=${GITHUB_REF##*/}
 
-      cd $DIR
+            if [ "$BRANCH" = "main" ]; then
+              DIR="/home/${USER}/bungabucket"
+              COMPOSE="docker-compose.prod.yml"
+              APP_ENV="production"
+              APP_DEBUG=false
+              APP_NAME="Bunga Bucket"
+              APP_KEY="${{ secrets.PROD_APP_KEY }}"
+              DB_NAME="${{ secrets.PROD_DB_NAME }}"
+              DB_USER="${{ secrets.PROD_DB_USERNAME }}"
+              DB_PASS="${{ secrets.PROD_DB_PASSWORD }}"
+              QUEUE_CONNECTION="database"
+              APP_URL="https://bungabucket.my"
+            else
+              DIR="/home/${USER}/bungabucket_dev"
+              COMPOSE="docker-compose.dev.yml"
+              APP_ENV="local"
+              APP_DEBUG=true
+              APP_NAME="Bunga Bucket Dev"
+              DB_NAME="${{ secrets.DEV_DB_NAME }}"
+              DB_USER="${{ secrets.DEV_DB_USERNAME }}"
+              DB_PASS="${{ secrets.DEV_DB_PASSWORD }}"
+              QUEUE_CONNECTION="sync"
+              APP_URL="http://dev.bungabucket.my"
+            fi
 
-      # Generate APP_KEY for dev inside Docker
-      if [ "$BRANCH" != "main" ]; then
-        APP_KEY=$(docker run --rm -v $DIR:/var/www/html -w /var/www/html php:8.3-fpm bash -c "\
-          apt-get update && apt-get install -y unzip git curl && \
-          php -r 'copy(\"https://getcomposer.org/installer\", \"composer-setup.php\");' && \
-          php composer-setup.php --install-dir=/usr/local/bin --filename=composer && \
-          composer install --no-dev && \
-          php artisan key:generate --show \
-        ")
-      fi
+            mkdir -p $DIR
+            chmod -R 755 $DIR
 
-      # Generate .env properly (no indentation)
-      cat > $DIR/.env <<EOL
-      APP_NAME=$APP_NAME
-      APP_ENV=$APP_ENV
-      APP_KEY=$APP_KEY
-      APP_DEBUG=$APP_DEBUG
-      APP_URL=$( [ "$BRANCH" == "main" ] && echo "https://bungabucket.my" || echo "http://dev.bungabucket.my" )
-      APP_ADMIN_URL=admin-manage
-      APP_TIMEZONE=Asia/Kuala_Lumpur
-      DB_CONNECTION=mysql
-      DB_HOST=mysql
-      DB_PORT=3306
-      DB_DATABASE=$DB_NAME
-      DB_USERNAME=$DB_USER
-      DB_PASSWORD=$DB_PASS
-      CACHE_STORE=file
-      QUEUE_CONNECTION=$QUEUE_CONNECTION
-      SESSION_DRIVER=file
-      REDIS_HOST=redis
-      REDIS_PASSWORD=null
-      REDIS_PORT=6379
-      EOL
+            if [ ! -d "$DIR/.git" ]; then
+              git clone --branch $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git $DIR
+            else
+              cd $DIR
+              git reset --hard HEAD
+              git pull origin $BRANCH
+            fi
 
-    # Deploy Docker
-      
-      docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE down
-      docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE up --build -d
+            cd $DIR
+
+            # Generate APP_KEY automatically for dev
+            if [ "$BRANCH" != "main" ]; then
+              APP_KEY=$(docker run --rm -v $DIR:/var/www/html -w /var/www/html php:8.3-fpm bash -c "
+                apt-get update >/dev/null 2>&1 &&
+                apt-get install -y unzip git curl >/dev/null 2>&1 &&
+                php -r 'copy(\"https://getcomposer.org/installer\", \"composer-setup.php\");' &&
+                php composer-setup.php --install-dir=/usr/local/bin --filename=composer >/dev/null &&
+                composer install --no-dev >/dev/null &&
+                php artisan key:generate --show
+              ")
+            fi
+
+            # Create .env safely
+            printf "APP_NAME=%s\nAPP_ENV=%s\nAPP_KEY=%s\nAPP_DEBUG=%s\nAPP_URL=%s\nAPP_ADMIN_URL=admin-manage\nAPP_TIMEZONE=Asia/Kuala_Lumpur\nDB_CONNECTION=mysql\nDB_HOST=mysql\nDB_PORT=3306\nDB_DATABASE=%s\nDB_USERNAME=%s\nDB_PASSWORD=%s\nCACHE_STORE=file\nQUEUE_CONNECTION=%s\nSESSION_DRIVER=file\nREDIS_HOST=redis\nREDIS_PASSWORD=null\nREDIS_PORT=6379\n" \
+            "$APP_NAME" "$APP_ENV" "$APP_KEY" "$APP_DEBUG" "$APP_URL" \
+            "$DB_NAME" "$DB_USER" "$DB_PASS" "$QUEUE_CONNECTION" > $DIR/.env
+
+            docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE down
+            docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE up --build -d
