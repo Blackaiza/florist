@@ -1,94 +1,87 @@
-name: Deploy Laravel (Docker)
+- name: SSH Deploy
+  uses: appleboy/ssh-action@v1.0.3
+  with:
+    host: ${{ secrets.VPS_HOST }}
+    username: ${{ secrets.VPS_USER }}
+    key: ${{ secrets.VPS_SSH_KEY }}
+    script: |
+      BRANCH=${GITHUB_REF##*/}
 
-on:
-  push:
-    branches:
-      - main
-      - dev
+      # Set deploy paths
+      if [ "$BRANCH" == "main" ]; then
+        DIR="/home/${USER}/bungabucket"
+        COMPOSE="docker-compose.prod.yml"
+        APP_ENV="production"
+        APP_DEBUG=false
+        APP_NAME="Bunga Bucket"
+        APP_KEY="${{ secrets.PROD_APP_KEY }}"
+        DB_NAME="${{ secrets.PROD_DB_NAME }}"
+        DB_USER="${{ secrets.PROD_DB_USERNAME }}"
+        DB_PASS="${{ secrets.PROD_DB_PASSWORD }}"
+        QUEUE_CONNECTION="database"
+      else
+        DIR="/home/${USER}/bungabucket_dev"
+        COMPOSE="docker-compose.dev.yml"
+        APP_ENV="local"
+        APP_DEBUG=true
+        APP_NAME="Bunga Bucket Dev"
+        DB_NAME="${{ secrets.DEV_DB_NAME }}"
+        DB_USER="${{ secrets.DEV_DB_USERNAME }}"
+        DB_PASS="${{ secrets.DEV_DB_PASSWORD }}"
+        QUEUE_CONNECTION="sync"
+      fi
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      # Create folder if missing, fix permissions
+      mkdir -p $DIR
+      chown -R ${USER}:${USER} $DIR
+      chmod -R 755 $DIR
 
-      - name: SSH Deploy
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            BRANCH=${GITHUB_REF##*/}
+      # Clone or pull repo
+      if [ ! -d "$DIR/.git" ]; then
+        git clone --branch $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git $DIR
+      else
+        cd $DIR
+        git reset --hard HEAD
+        git pull origin $BRANCH
+      fi
 
-            if [ "$BRANCH" == "main" ]; then
-              DIR="/var/www/bungabucket"
-              COMPOSE="docker-compose.prod.yml"
-              APP_ENV="production"
-              APP_DEBUG=false
-              APP_NAME="Bunga Bucket"
-              APP_KEY="${{ secrets.PROD_APP_KEY }}"
-              DB_NAME="${{ secrets.PROD_DB_NAME }}"
-              DB_USER="${{ secrets.PROD_DB_USERNAME }}"
-              DB_PASS="${{ secrets.PROD_DB_PASSWORD }}"
-              QUEUE_CONNECTION="database"
-              APP_URL="https://bungabucket.my"
-            else
-              DIR="/var/www/bungabucket_dev"
-              COMPOSE="docker-compose.dev.yml"
-              APP_ENV="local"
-              APP_DEBUG=true
-              APP_NAME="Bunga Bucket Dev"
-              DB_NAME="${{ secrets.DEV_DB_NAME }}"
-              DB_USER="${{ secrets.DEV_DB_USERNAME }}"
-              DB_PASS="${{ secrets.DEV_DB_PASSWORD }}"
-              QUEUE_CONNECTION="sync"
-              APP_KEY=$(docker run --rm -v $DIR:/var/www/html -w /var/www/html php:8.3-fpm \
-                bash -c "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y unzip git curl && php -r 'copy(\"https://getcomposer.org/installer\",\"composer-setup.php\");' && php composer-setup.php --install-dir=/usr/local/bin --filename=composer && composer install --no-dev && php artisan key:generate --show")
-              APP_URL="http://dev.bungabucket.my"
-            fi
+      cd $DIR
 
-            # Make sure the folder exists and is writable
-            mkdir -p $DIR
-            chown -R $USER:$USER $DIR
-            chmod -R 755 $DIR
+      # Generate APP_KEY for dev inside Docker
+      if [ "$BRANCH" != "main" ]; then
+        APP_KEY=$(docker run --rm -v $DIR:/var/www/html -w /var/www/html php:8.3-fpm bash -c "\
+          apt-get update && apt-get install -y unzip git curl && \
+          php -r 'copy(\"https://getcomposer.org/installer\", \"composer-setup.php\");' && \
+          php composer-setup.php --install-dir=/usr/local/bin --filename=composer && \
+          composer install --no-dev && \
+          php artisan key:generate --show \
+        ")
+      fi
 
-            cd $DIR
+      # Generate .env properly (no indentation)
+      cat > $DIR/.env <<EOL
+      APP_NAME=$APP_NAME
+      APP_ENV=$APP_ENV
+      APP_KEY=$APP_KEY
+      APP_DEBUG=$APP_DEBUG
+      APP_URL=$( [ "$BRANCH" == "main" ] && echo "https://bungabucket.my" || echo "http://dev.bungabucket.my" )
+      APP_ADMIN_URL=admin-manage
+      APP_TIMEZONE=Asia/Kuala_Lumpur
+      DB_CONNECTION=mysql
+      DB_HOST=mysql
+      DB_PORT=3306
+      DB_DATABASE=$DB_NAME
+      DB_USERNAME=$DB_USER
+      DB_PASSWORD=$DB_PASS
+      CACHE_STORE=file
+      QUEUE_CONNECTION=$QUEUE_CONNECTION
+      SESSION_DRIVER=file
+      REDIS_HOST=redis
+      REDIS_PASSWORD=null
+      REDIS_PORT=6379
+      EOL
 
-            # Clone or pull repo
-            if [ ! -d "$DIR/.git" ]; then
-              git clone --branch $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git $DIR
-            else
-              git reset --hard HEAD
-              git pull origin $BRANCH
-            fi
-
-            cat > $DIR/.env <<EOL
-            APP_NAME=$APP_NAME
-            APP_ENV=$APP_ENV
-            APP_KEY=$APP_KEY
-            APP_DEBUG=$APP_DEBUG
-            APP_URL=$APP_URL
-            APP_ADMIN_URL=admin-manage
-            APP_TIMEZONE=Asia/Kuala_Lumpur
-
-            DB_CONNECTION=mysql
-            DB_HOST=mysql
-            DB_PORT=3306
-            DB_DATABASE=$DB_NAME
-            DB_USERNAME=$DB_USER
-            DB_PASSWORD=$DB_PASS
-
-            CACHE_STORE=file
-            QUEUE_CONNECTION=$QUEUE_CONNECTION
-            SESSION_DRIVER=file
-
-            REDIS_HOST=redis
-            REDIS_PASSWORD=null
-            REDIS_PORT=6379
-            EOL
-
-            # Deploy Docker
-            docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE down
-            docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE up --build -d
+    # Deploy Docker
+      
+      docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE down
+      docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE up --build -d
