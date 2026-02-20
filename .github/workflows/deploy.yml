@@ -18,19 +18,26 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            BRANCH=${GITHUB_REF##*/}
+           BRANCH=${GITHUB_REF##*/}
+
+            cd ~ || exit 1   # go to SSH user's home
 
             if [ "$BRANCH" = "main" ]; then
-              DIR="$HOME/bungabucket"
+              DIR="bungabucket"
               COMPOSE="docker-compose.prod.yml"
             else
-              DIR="$HOME/bungabucket_dev"
+              DIR="bungabucket_dev"
               COMPOSE="docker-compose.dev.yml"
             fi
 
+            # Remove old repo contents if exists
             rm -rf $DIR
             git clone --branch $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git $DIR
-            cd $DIR
+            cd $DIR || exit 1
 
+            # Optional: create .env here
+            # printf "APP_NAME=...\n" > .env
+
+            # Run Docker
             docker compose -f docker-compose.yml -f $COMPOSE down || true
             docker compose -f docker-compose.yml -f $COMPOSE up --build -d
