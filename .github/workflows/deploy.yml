@@ -18,30 +18,19 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            set -e
-
             BRANCH=${GITHUB_REF##*/}
 
             if [ "$BRANCH" = "main" ]; then
-              DIR="/home/${USER}/bungabucket"
+              DIR="$HOME/bungabucket"
               COMPOSE="docker-compose.prod.yml"
             else
-              DIR="/home/${USER}/bungabucket_dev"
+              DIR="$HOME/bungabucket_dev"
               COMPOSE="docker-compose.dev.yml"
             fi
 
-            echo "Deploying $BRANCH to $DIR"
-
-            # Remove completely to avoid broken state
             rm -rf $DIR
-
-            # Fresh clone every time
             git clone --branch $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git $DIR
-
             cd $DIR
-
-            echo "Project files:"
-            ls -lah
 
             docker compose -f docker-compose.yml -f $COMPOSE down || true
             docker compose -f docker-compose.yml -f $COMPOSE up --build -d
