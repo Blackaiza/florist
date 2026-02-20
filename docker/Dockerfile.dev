@@ -1,3 +1,4 @@
+# Dockerfile.dev
 FROM php:8.3-fpm
 
 # System deps
@@ -13,7 +14,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/bungabucket_dev
 
-# Copy only composer first for caching
+# Copy composer files first
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader
 
@@ -21,4 +22,4 @@ RUN composer install --no-dev --optimize-autoloader
 COPY . .
 
 # Laravel key for dev
-RUN php artisan key:generate
+RUN php artisan key:generate --show > /tmp/app_key.txt

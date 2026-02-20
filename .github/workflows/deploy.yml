@@ -20,62 +20,68 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            # Determine deploy path and compose
+            if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
               DIR="/var/www/bungabucket"
               COMPOSE="docker-compose.prod.yml"
-              # Generate prod .env
+              mkdir -p $DIR
               cat > $DIR/.env <<EOL
-              APP_NAME=Bunga Bucket
-              APP_ENV=production
-              APP_KEY=${{ secrets.PROD_APP_KEY }}
-              APP_DEBUG=false
-              APP_URL=https://bungabucket.my
-              APP_ADMIN_URL=admin-manage
-              APP_TIMEZONE=Asia/Kuala_Lumpur
+            APP_NAME=Bunga Bucket
+            APP_ENV=production
+            APP_KEY=${{ secrets.PROD_APP_KEY }}
+            APP_DEBUG=false
+            APP_URL=https://bungabucket.my
+            APP_ADMIN_URL=admin-manage
+            APP_TIMEZONE=Asia/Kuala_Lumpur
 
-              DB_CONNECTION=mysql
-              DB_HOST=mysql
-              DB_PORT=3306
-              DB_DATABASE=${{ secrets.PROD_DB_NAME }}
-              DB_USERNAME=${{ secrets.PROD_DB_USERNAME }}
-              DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
+            DB_CONNECTION=mysql
+            DB_HOST=mysql
+            DB_PORT=3306
+            DB_DATABASE=${{ secrets.PROD_DB_NAME }}
+            DB_USERNAME=${{ secrets.PROD_DB_USERNAME }}
+            DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
 
-              CACHE_STORE=file
-              QUEUE_CONNECTION=database
-              SESSION_DRIVER=file
+            CACHE_STORE=file
+            QUEUE_CONNECTION=database
+            SESSION_DRIVER=file
 
-              REDIS_HOST=redis
-              REDIS_PASSWORD=null
-              REDIS_PORT=6379
-              EOL
+            REDIS_HOST=redis
+            REDIS_PASSWORD=null
+            REDIS_PORT=6379
+            EOL
             else
               DIR="/var/www/bungabucket_dev"
               COMPOSE="docker-compose.dev.yml"
-              # Generate dev .env
-            cat > $DIR/.env <<EOL
+              # Extract the generated APP_KEY
+              APP_KEY=$(docker run --rm -v $DIR:/var/www/bungabucket_dev laravel_app cat /tmp/app_key.txt)
+              mkdir -p $DIR
+              cat > $DIR/.env <<EOL
             APP_NAME=Bunga Bucket Dev
             APP_ENV=local
-            APP_KEY=${{ secrets.DEV_APP_KEY }}
+            APP_KEY=$APP_KEY
             APP_DEBUG=true
             APP_URL=http://dev.bungabucket.my
             APP_ADMIN_URL=admin-manage
             APP_TIMEZONE=Asia/Kuala_Lumpur
+
             DB_CONNECTION=mysql
             DB_HOST=mysql
             DB_PORT=3306
             DB_DATABASE=${{ secrets.DEV_DB_NAME }}
             DB_USERNAME=${{ secrets.DEV_DB_USERNAME }}
             DB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}
+
             CACHE_STORE=file
             QUEUE_CONNECTION=sync
             SESSION_DRIVER=file
+
             REDIS_HOST=redis
             REDIS_PASSWORD=null
             REDIS_PORT=6379
             EOL
             fi
 
-            # Git pull / clone
+            # Git clone / pull
             if [ ! -d "$DIR/.git" ]; then
               git clone --branch ${GITHUB_REF##*/} https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git $DIR
             else
@@ -85,6 +91,5 @@ jobs:
             fi
 
             cd $DIR
-            # Use both base + override
             docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE down
-            docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE up -d --build
+            docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE up --build -d
