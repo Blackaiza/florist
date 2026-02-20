@@ -1,0 +1,93 @@
+name: Deploy Laravel (Docker)
+
+on:
+  push:
+    branches:
+      - main   # prod
+      - dev    # dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+              DIR="/var/www/bungabucket"
+              COMPOSE="docker-compose.prod.yml"
+              # Generate prod .env
+              cat > $DIR/.env <<EOL
+              APP_NAME=Bunga Bucket
+              APP_ENV=production
+              APP_KEY=${{ secrets.PROD_APP_KEY }}
+              APP_DEBUG=false
+              APP_URL=https://bungabucket.my
+              APP_ADMIN_URL=admin-manage
+              APP_TIMEZONE=Asia/Kuala_Lumpur
+
+              DB_CONNECTION=mysql
+              DB_HOST=mysql
+              DB_PORT=3306
+              DB_DATABASE=${{ secrets.PROD_DB_NAME }}
+              DB_USERNAME=${{ secrets.PROD_DB_USERNAME }}
+              DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
+
+              CACHE_STORE=file
+              QUEUE_CONNECTION=database
+              SESSION_DRIVER=file
+
+              REDIS_HOST=redis
+              REDIS_PASSWORD=null
+              REDIS_PORT=6379
+              EOL
+            else
+              DIR="/var/www/bungabucket_dev"
+              COMPOSE="docker-compose.dev.yml"
+              # Generate dev .env
+              cat > $DIR/.env <<EOL
+              APP_NAME=Bunga Bucket Dev
+              APP_ENV=local
+              APP_KEY=${{ secrets.DEV_APP_KEY }}
+              APP_DEBUG=true
+              APP_URL=http://dev.bungabucket.my
+              APP_ADMIN_URL=admin-manage
+              APP_TIMEZONE=Asia/Kuala_Lumpur
+
+              DB_CONNECTION=mysql
+              DB_HOST=mysql
+              DB_PORT=3306
+              DB_DATABASE=${{ secrets.DEV_DB_NAME }}
+              DB_USERNAME=${{ secrets.DEV_DB_USERNAME }}
+              DB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}
+
+              CACHE_STORE=file
+              QUEUE_CONNECTION=sync
+              SESSION_DRIVER=file
+
+              REDIS_HOST=redis
+              REDIS_PASSWORD=null
+              REDIS_PORT=6379
+              EOL
+            fi
+
+            # Git pull / clone
+            if [ ! -d "$DIR/.git" ]; then
+              git clone --branch ${GITHUB_REF##*/} https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git $DIR
+            else
+              cd $DIR
+              git reset --hard HEAD
+              git pull origin ${GITHUB_REF##*/}
+            fi
+
+            cd $DIR
+            # Use both base + override
+            docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE down
+            docker compose --env-file $DIR/.env -f docker-compose.yml -f $COMPOSE up -d --build

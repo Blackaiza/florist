@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      dockerfile: docker/Dockerfile.dev
+    environment:
+      APP_ENV: local
+      APP_DEBUG: true
+      APP_KEY: ${APP_KEY}
