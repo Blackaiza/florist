@@ -20,6 +20,10 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            # --- AUTOMATE PERMISSIONS ---
+            sudo mkdir -p /var/www/bungabucket /var/www/bungabucket_dev
+            sudo chown -R $USER:$USER /var/www/bungabucket /var/www/bungabucket_dev
+            sudo chmod -R 755 /var/www/bungabucket /var/www/bungabucket_dev
             # Determine deploy path and compose
             if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
               DIR="/var/www/bungabucket"
@@ -53,7 +57,10 @@ jobs:
               DIR="/var/www/bungabucket_dev"
               COMPOSE="docker-compose.dev.yml"
               # Extract the generated APP_KEY
-              APP_KEY=$(docker run --rm -v $DIR:/var/www/bungabucket_dev laravel_app cat /tmp/app_key.txt)
+              # Build dev container
+              docker compose -f docker-compose.yml -f $COMPOSE build app
+              # Run a one-off container to generate key
+              APP_KEY=$(docker compose -f docker-compose.yml -f $COMPOSE run --rm app php artisan key:generate --show)
               mkdir -p $DIR
               cat > $DIR/.env <<EOL
             APP_NAME=Bunga Bucket Dev
