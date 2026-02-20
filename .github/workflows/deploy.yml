@@ -3,8 +3,8 @@ name: Deploy Laravel (Docker)
 on:
   push:
     branches:
-      - main   # prod
-      - dev    # dev
+      - main
+      - dev
 
 jobs:
   deploy:
@@ -23,7 +23,7 @@ jobs:
             BRANCH=${GITHUB_REF##*/}
 
             if [ "$BRANCH" == "main" ]; then
-              DIR="/home/${USER}/bungabucket"
+              DIR="/var/www/bungabucket"
               COMPOSE="docker-compose.prod.yml"
               APP_ENV="production"
               APP_DEBUG=false
@@ -33,8 +33,9 @@ jobs:
               DB_USER="${{ secrets.PROD_DB_USERNAME }}"
               DB_PASS="${{ secrets.PROD_DB_PASSWORD }}"
               QUEUE_CONNECTION="database"
+              APP_URL="https://bungabucket.my"
             else
-              DIR="/home/${USER}/bungabucket_dev"
+              DIR="/var/www/bungabucket_dev"
               COMPOSE="docker-compose.dev.yml"
               APP_ENV="local"
               APP_DEBUG=true
@@ -43,10 +44,16 @@ jobs:
               DB_USER="${{ secrets.DEV_DB_USERNAME }}"
               DB_PASS="${{ secrets.DEV_DB_PASSWORD }}"
               QUEUE_CONNECTION="sync"
+              APP_KEY=$(docker run --rm -v $DIR:/var/www/html -w /var/www/html php:8.3-fpm \
+                bash -c "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y unzip git curl && php -r 'copy(\"https://getcomposer.org/installer\",\"composer-setup.php\");' && php composer-setup.php --install-dir=/usr/local/bin --filename=composer && composer install --no-dev && php artisan key:generate --show")
+              APP_URL="http://dev.bungabucket.my"
             fi
 
-            # Create folder if missing
+            # Make sure the folder exists and is writable
             mkdir -p $DIR
+            chown -R $USER:$USER $DIR
+            chmod -R 755 $DIR
+
             cd $DIR
 
             # Clone or pull repo
@@ -57,20 +64,12 @@ jobs:
               git pull origin $BRANCH
             fi
 
-            cd $DIR
-
-            # Generate APP_KEY for dev automatically
-            if [ "$BRANCH" != "main" ]; then
-              APP_KEY=$(docker run --rm -v $DIR:/var/www/html -w /var/www/html php:8.3-fpm \
-                bash -c "apt-get update && apt-get install -y unzip git && php -r 'copy(\"https://getcomposer.org/installer\", \"composer-setup.php\");' && php composer-setup.php --install-dir=/usr/local/bin --filename=composer && composer install --no-dev && php artisan key:generate --show")
-            fi
-
             cat > $DIR/.env <<EOL
             APP_NAME=$APP_NAME
             APP_ENV=$APP_ENV
             APP_KEY=$APP_KEY
             APP_DEBUG=$APP_DEBUG
-            APP_URL=$( [ "$BRANCH" == "main" ] && echo "https://bungabucket.my" || echo "http://dev.bungabucket.my" )
+            APP_URL=$APP_URL
             APP_ADMIN_URL=admin-manage
             APP_TIMEZONE=Asia/Kuala_Lumpur
 

@@ -1,25 +1,17 @@
-# Dockerfile.prod
 FROM php:8.3-fpm
 
-# System dependencies
-RUN apt-get update && apt-get install -y \
-    git unzip libzip-dev libpng-dev libonig-dev libxml2-dev \
-    zip curl
+ENV DEBIAN_FRONTEND=noninteractive
 
-# PHP extensions
-RUN docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd
+RUN apt-get update && apt-get install -y git unzip libzip-dev libpng-dev libonig-dev libxml2-dev zip curl \
+    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd \
+    && rm -rf /var/lib/apt/lists/*
 
-# Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Standard working directory inside container
 WORKDIR /var/www/html
 
-# Copy composer files first and install dependencies
 COPY composer.json composer.lock ./
-RUN composer install --optimize-autoloader --no-dev
+RUN composer install --no-dev --optimize-autoloader
 
-# Copy the rest of the app
 COPY . .
-
-# No APP_KEY generation here; use .env on host
+# APP_KEY will come from host .env

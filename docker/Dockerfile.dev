@@ -1,25 +1,17 @@
-# Dockerfile.dev
 FROM php:8.3-fpm
 
-# System deps
-RUN apt-get update && apt-get install -y \
-    git unzip libzip-dev libpng-dev libonig-dev libxml2-dev \
-    zip curl
+ENV DEBIAN_FRONTEND=noninteractive
 
-# PHP extensions
-RUN docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd
+RUN apt-get update && apt-get install -y git unzip libzip-dev libpng-dev libonig-dev libxml2-dev zip curl \
+    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd \
+    && rm -rf /var/lib/apt/lists/*
 
-# Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-WORKDIR /var/www/bungabucket_dev
+WORKDIR /var/www/html
 
-# Copy composer files first
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader
 
-# Copy the rest
 COPY . .
-
-# Laravel key for dev
 RUN php artisan key:generate --show > /tmp/app_key.txt
