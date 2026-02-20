@@ -21,10 +21,10 @@ jobs:
             BRANCH=${GITHUB_REF##*/}
 
             if [ "$BRANCH" = "main" ]; then
-              DIR="$HOME/bungabucket"
+              DIR="$HOME/bungabucket/bungabucket"
               COMPOSE="docker-compose.prod.yml"
             else
-              DIR="$HOME/bungabucket_dev"
+              DIR="$HOME/bungabucket/bungabucket_dev"
               COMPOSE="docker-compose.dev.yml"
             fi
 
