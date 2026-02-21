@@ -39,6 +39,9 @@ jobs:
             chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} $DEPLOY_DIR
             chmod -R 775 $DEPLOY_DIR
 
+            # Git safe directory
+            git config --global --add safe.directory $DEPLOY_DIR
+
             cd $DEPLOY_DIR || exit 1
 
             # Pull latest changes
@@ -49,6 +52,9 @@ jobs:
             cat <<EOF > .env
             $ENV_CONTENT
             EOF
+
+            # Make only writeable directories
+            chmod -R 775 storage bootstrap/cache
 
             # Restart docker
             docker compose -f $COMPOSE_FILE down
