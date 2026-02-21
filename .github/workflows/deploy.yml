@@ -21,7 +21,6 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-
             # Determine branch and deployment details
             if [ "${{ github.ref }}" == "refs/heads/main" ]; then
                 DEPLOY_DIR="/home/${{ secrets.VPS_USER }}/bungabucket-prod/florist"
@@ -35,25 +34,27 @@ jobs:
                 BRANCH="dev"
             fi
 
-            cd $DEPLOY_DIR || exit 1
+            # Create deploy directory if it doesn't exist
+            mkdir -p "$DEPLOY_DIR"
 
-            # Make git directory safe
-            git config --global --add safe.directory $DEPLOY_DIR
+            # Move into deploy directory
+            cd "$DEPLOY_DIR" || exit 1
 
-            # Pull latest changes safely
+            # Initialize git repo if it doesn't exist
             if [ ! -d .git ]; then
                 git clone -b $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git .
             else
+                # Ensure git sees this as safe
+                git config --global --add safe.directory "$DEPLOY_DIR"
                 git fetch origin
                 git reset --hard origin/$BRANCH
             fi
 
-            # Write .env safely
-            cat <<EOF > .env
-            $ENV_CONTENT
-            EOF
+            # Write .env safely (overwrite)
+            echo "$ENV_CONTENT" > .env
 
-            # Set only necessary write permissions
+            # Ensure writable directories for Laravel
+            mkdir -p storage bootstrap/cache
             chmod -R 775 storage bootstrap/cache
 
             # Restart docker
