@@ -2,8 +2,10 @@ FROM php:8.3-fpm
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y git unzip libzip-dev libpng-dev libonig-dev libxml2-dev zip curl \
-    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd \
+RUN apt-get update && apt-get install -y \
+        git unzip libzip-dev libpng-dev libonig-dev libxml2-dev zip curl libicu-dev \
+    && docker-php-ext-install \
+        pdo pdo_mysql mbstring exif pcntl bcmath gd intl calendar zip \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

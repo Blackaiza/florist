@@ -18,27 +18,71 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            BRANCH=${{ github.ref_name }}   # <-- pass branch from GH Actions
+            # Get branch name from GitHub Actions
+            BRANCH=${{ github.ref_name }}
 
+            # Set folder and docker-compose file based on branch
             if [ "$BRANCH" = "main" ]; then
               DIR="bungabucket"
               COMPOSE="docker-compose.prod.yml"
+              APP_ENV="production"
+              APP_DEBUG=false
+              APP_NAME="Bunga Bucket"
+              APP_KEY="${{ secrets.PROD_APP_KEY }}"
+              DB_NAME="${{ secrets.PROD_DB_NAME }}"
+              DB_USER="${{ secrets.PROD_DB_USERNAME }}"
+              DB_PASS="${{ secrets.PROD_DB_PASSWORD }}"
+              QUEUE_CONNECTION="database"
+              APP_URL="https://bungabucket.my"
             else
               DIR="bungabucket_dev"
               COMPOSE="docker-compose.dev.yml"
+              APP_ENV="local"
+              APP_DEBUG=true
+              APP_NAME="Bunga Bucket Dev"
+              DB_NAME="${{ secrets.DEV_DB_NAME }}"
+              DB_USER="${{ secrets.DEV_DB_USERNAME }}"
+              DB_PASS="${{ secrets.DEV_DB_PASSWORD }}"
+              QUEUE_CONNECTION="sync"
+              APP_URL="http://dev.bungabucket.my"
             fi
 
+            # Go to SSH user's home
             cd ~ || exit 1
 
+            # Remove existing folder if exists
             if [ -d "$DIR" ]; then
               echo "Removing existing folder $DIR..."
               rm -rf "$DIR"
             fi
 
+            # Clone the repo into DIR
             echo "Cloning branch $BRANCH into $DIR..."
             git clone --branch "$BRANCH" https://github.com/Blackaiza/florist.git "$DIR" || exit 1
             cd "$DIR" || exit 1
 
+            # Generate APP_KEY for dev if needed
+            if [ "$BRANCH" != "main" ]; then
+              APP_KEY=$(docker run --rm -v $PWD:/var/www/html -w /var/www/html php:8.3-fpm bash -c "
+                apt-get update >/dev/null 2>&1 &&
+                apt-get install -y unzip git curl libicu-dev zip >/dev/null 2>&1 &&
+                php -r 'copy(\"https://getcomposer.org/installer\", \"composer-setup.php\");' &&
+                php composer-setup.php --install-dir=/usr/local/bin --filename=composer >/dev/null &&
+                composer install --no-dev --optimize-autoloader >/dev/null &&
+                php artisan key:generate --show
+              ")
+              echo "Generated dev APP_KEY: $APP_KEY"
+            fi
+
+            # Create .env
+            printf "APP_NAME=%s\nAPP_ENV=%s\nAPP_KEY=%s\nAPP_DEBUG=%s\nAPP_URL=%s\nAPP_ADMIN_URL=admin-manage\nAPP_TIMEZONE=Asia/Kuala_Lumpur\nDB_CONNECTION=mysql\nDB_HOST=mysql\nDB_PORT=3306\nDB_DATABASE=%s\nDB_USERNAME=%s\nDB_PASSWORD=%s\nCACHE_STORE=file\nQUEUE_CONNECTION=%s\nSESSION_DRIVER=file\nREDIS_HOST=redis\nREDIS_PASSWORD=null\nREDIS_PORT=6379\n" \
+              "$APP_NAME" "$APP_ENV" "$APP_KEY" "$APP_DEBUG" "$APP_URL" \
+              "$DB_NAME" "$DB_USER" "$DB_PASS" "$QUEUE_CONNECTION" > .env
+
+            echo ".env created."
+
+            # Run Docker
             echo "Starting Docker..."
             docker compose -f docker-compose.yml -f "$COMPOSE" down || true
             docker compose -f docker-compose.yml -f "$COMPOSE" up --build -d
+            echo "Deployment completed successfully."
