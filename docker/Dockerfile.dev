@@ -10,9 +10,14 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Dockerfile.dev
+
 WORKDIR /var/www/html
 
-COPY composer.json composer.lock ./
+# Copy everything first
+COPY . .
+
+# Then install composer dependencies
 RUN composer install --no-dev --optimize-autoloader
 
 COPY . .
