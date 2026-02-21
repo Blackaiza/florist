@@ -9,7 +9,6 @@ services:
     environment:
       APP_ENV: local
       APP_DEBUG: true
-      APP_KEY: ${APP_KEY}
     ports:
       - "5050:80"
       - "9000:9000"

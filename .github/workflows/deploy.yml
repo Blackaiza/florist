@@ -61,18 +61,18 @@ jobs:
             git clone --branch "$BRANCH" https://github.com/Blackaiza/florist.git "$DIR" || exit 1
             cd "$DIR" || exit 1
 
-            # Generate APP_KEY for dev if needed
-            if [ "$BRANCH" != "main" ]; then
-              APP_KEY=$(docker run --rm -v $PWD:/var/www/html -w /var/www/html php:8.3-fpm bash -c "
-                apt-get update >/dev/null 2>&1 &&
-                apt-get install -y unzip git curl libicu-dev zip >/dev/null 2>&1 &&
-                php -r 'copy(\"https://getcomposer.org/installer\", \"composer-setup.php\");' &&
-                php composer-setup.php --install-dir=/usr/local/bin --filename=composer >/dev/null &&
-                composer install --no-dev --optimize-autoloader >/dev/null &&
-                php artisan key:generate --show
-              ")
-              echo "Generated dev APP_KEY: $APP_KEY"
-            fi
+            # # Generate APP_KEY for dev if needed
+            # if [ "$BRANCH" != "main" ]; then
+            #   APP_KEY=$(docker run --rm -v $PWD:/var/www/html -w /var/www/html php:8.3-fpm bash -c "
+            #     apt-get update >/dev/null 2>&1 &&
+            #     apt-get install -y unzip git curl libicu-dev zip >/dev/null 2>&1 &&
+            #     php -r 'copy(\"https://getcomposer.org/installer\", \"composer-setup.php\");' &&
+            #     php composer-setup.php --install-dir=/usr/local/bin --filename=composer >/dev/null &&
+            #     composer install --no-dev --optimize-autoloader >/dev/null &&
+            #     php artisan key:generate --show
+            #   ")
+            #   echo "Generated dev APP_KEY: $APP_KEY"
+            # fi
 
             # Create .env
             printf "APP_NAME=%s\nAPP_ENV=%s\nAPP_KEY=%s\nAPP_DEBUG=%s\nAPP_URL=%s\nAPP_ADMIN_URL=admin-manage\nAPP_TIMEZONE=Asia/Kuala_Lumpur\nDB_CONNECTION=mysql\nDB_HOST=mysql\nDB_PORT=3306\nDB_DATABASE=%s\nDB_USERNAME=%s\nDB_PASSWORD=%s\nCACHE_STORE=file\nQUEUE_CONNECTION=%s\nSESSION_DRIVER=file\nREDIS_HOST=redis\nREDIS_PASSWORD=null\nREDIS_PORT=6379\n" \
