@@ -78,9 +78,7 @@ jobs:
             # fi
 
             # Create .env
-            printf "APP_NAME=%s\nAPP_ENV=%s\nAPP_KEY=%s\nAPP_DEBUG=%s\nAPP_URL=%s\nAPP_ADMIN_URL=admin-manage\nAPP_TIMEZONE=Asia/Kuala_Lumpur\nDB_CONNECTION=mysql\nDB_HOST=mysql\nDB_PORT=3306\nDB_DATABASE=%s\nDB_USERNAME=%s\nDB_PASSWORD=%s\nCACHE_STORE=file\nQUEUE_CONNECTION=%s\nSESSION_DRIVER=file\nREDIS_HOST=redis\nREDIS_PASSWORD=null\nREDIS_PORT=6379\n" \
-              "$APP_NAME" "$APP_ENV" "$APP_KEY" "$APP_DEBUG" "$APP_URL" \
-              "$DB_NAME" "$DB_USER" "$DB_PASS" "$QUEUE_CONNECTION" > .env
+            printf "APP_NAME=%s\nAPP_ENV=%s\nAPP_KEY=%s\nAPP_DEBUG=%s\nAPP_URL=%s\nAPP_LOCALE=en\nAPP_FALLBACK_LOCALE=en\nAPP_TIMEZONE=Asia/Kuala_Lumpur\nDB_CONNECTION=mysql\nDB_HOST=mysql\nDB_PORT=3306\nDB_DATABASE=%s\nDB_USERNAME=%s\nDB_PASSWORD=%s\nCACHE_STORE=file\nQUEUE_CONNECTION=%s\nSESSION_DRIVER=file\nREDIS_HOST=redis\nREDIS_PASSWORD=null\nREDIS_PORT=6379\n" \
 
             echo ".env created."
 
