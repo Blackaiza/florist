@@ -22,68 +22,40 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
 
+            # Determine branch and deployment details
             if [ "${{ github.ref }}" == "refs/heads/main" ]; then
                 DEPLOY_DIR="/home/${{ secrets.VPS_USER }}/bungabucket-prod/florist"
                 COMPOSE_FILE="docker-compose.prod.yml"
                 ENV_CONTENT="${{ secrets.PROD_ENV }}"
+                BRANCH="main"
             else
                 DEPLOY_DIR="/home/${{ secrets.VPS_USER }}/bungabucket-dev/florist"
                 COMPOSE_FILE="docker-compose.dev.yml"
                 ENV_CONTENT="${{ secrets.DEV_ENV }}"
+                BRANCH="dev"
             fi
-
-            # Make directory safe for git
-            git config --global --add safe.directory $DEPLOY_DIR
-
-            # Fix permissions
-            chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} $DEPLOY_DIR
-            chmod -R 775 $DEPLOY_DIR
-
-            # Git safe directory
-            git config --global --add safe.directory $DEPLOY_DIR
 
             cd $DEPLOY_DIR || exit 1
 
-            # Pull latest changes
-            git fetch origin
-            git reset --hard origin/${{ github.ref == 'refs/heads/main' && 'main' || 'dev' }}
+            # Make git directory safe
+            git config --global --add safe.directory $DEPLOY_DIR
+
+            # Pull latest changes safely
+            if [ ! -d .git ]; then
+                git clone -b $BRANCH https://***@github.com/Blackaiza/florist.git .
+            else
+                git fetch origin
+                git reset --hard origin/$BRANCH
+            fi
 
             # Write .env safely
             cat <<EOF > .env
             $ENV_CONTENT
             EOF
 
-            # Make only writeable directories
+            # Set only necessary write permissions
             chmod -R 775 storage bootstrap/cache
 
             # Restart docker
             docker compose -f $COMPOSE_FILE down
             docker compose -f $COMPOSE_FILE up -d --build
-
-            # # Choose branch
-            # if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            #     BRANCH="main"
-            #     COMPOSE_FILE="docker-compose.prod.yml"
-            #     ENV_FILE=".env"
-            #     ENV_CONTENT="${{ secrets.PROD_ENV }}"
-            # else
-            #     BRANCH="dev"
-            #     COMPOSE_FILE="docker-compose.dev.yml"
-            #     ENV_FILE=".env"
-            #     ENV_CONTENT="${{ secrets.DEV_ENV }}"
-            # fi
-
-            # # If folder is not a git repo, clone it
-            # if [ ! -d .git ]; then
-            #     git clone -b $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git .
-            # else
-            #     git fetch origin $BRANCH
-            #     git reset --hard origin/$BRANCH
-            # fi
-
-            # # Write environment from secret
-            # echo "$ENV_CONTENT" > $ENV_FILE
-
-            # # Restart docker
-            # docker compose -f $COMPOSE_FILE down
-            # docker compose -f $COMPOSE_FILE up -d --build
