@@ -21,16 +21,20 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-              cd /var/www/bungabucket-prod
-              git pull origin main
-              echo "${{ secrets.PROD_ENV }}" > .env
-              docker compose -f docker-compose.prod.yml down
-              docker compose -f docker-compose.prod.yml up -d --build
+            REPO="https://github.com/Blackaiza/florist.git"
+            if [ ! -d .git ]; then
+                git clone -b ${{ github.ref == 'refs/heads/main' && 'main' || 'dev' }} https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git .
             else
-              cd /var/www/bungabucket-dev
-              git pull origin dev
-              echo "${{ secrets.DEV_ENV }}" > .env
-              docker compose -f docker-compose.dev.yml down
-              docker compose -f docker-compose.dev.yml up -d --build
+                git fetch --all
+                git reset --hard origin/${{ github.ref == 'refs/heads/main' && 'main' || 'dev' }}
+            fi
+
+            if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+                echo "${{ secrets.PROD_ENV }}" > .env
+                docker compose -f docker-compose.prod.yml down
+                docker compose -f docker-compose.prod.yml up -d --build
+            else
+                echo "${{ secrets.DEV_ENV }}" > .env
+                docker compose -f docker-compose.dev.yml down
+                docker compose -f docker-compose.dev.yml up -d --build
             fi
