@@ -39,6 +39,9 @@ jobs:
               COMPOSE="docker-compose.dev.yml"
               APP_ENV="local"
               APP_DEBUG=true
+              APP_LOCALE=en
+              APP_FALLBACK_LOCALE=en
+              APP_FAKER_LOCALE=en_US
               APP_NAME="Bunga_Bucket_Dev"
               DB_NAME="${{ secrets.DEV_DB_NAME }}"
               DB_USER="${{ secrets.DEV_DB_USERNAME }}"
