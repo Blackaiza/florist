@@ -1,25 +1,37 @@
+# Dockerfile.dev
 FROM php:8.3-fpm
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Install Apache, PHP extensions, utilities
 RUN apt-get update && apt-get install -y \
+        apache2 \
         git unzip libzip-dev libpng-dev libonig-dev libxml2-dev zip curl libicu-dev \
     && docker-php-ext-install \
         pdo pdo_mysql mbstring exif pcntl bcmath gd intl calendar zip \
     && rm -rf /var/lib/apt/lists/*
 
+# Enable Apache mod_rewrite and proxy modules
+RUN a2enmod rewrite proxy proxy_http headers
+
+# Copy Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Dockerfile.dev
-
+# Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files and install deps (no scripts yet)
+# Copy composer files and install deps
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
 # Copy full project
 COPY . .
 
-# Now run artisan commands safely
-RUN php artisan package:discover --ansi
+# Set Apache document root
+RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
+
+# Expose port 80 for HTTP
+EXPOSE 80
+
+# Start both PHP-FPM and Apache in foreground
+CMD service php8.3-fpm start && apache2ctl -D FOREGROUND
