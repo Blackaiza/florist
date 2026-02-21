@@ -27,7 +27,7 @@ jobs:
               COMPOSE="docker-compose.prod.yml"
               APP_ENV="production"
               APP_DEBUG=false
-              APP_NAME="Bunga Bucket"
+              APP_NAME="Bunga_Bucket"
               APP_KEY="${{ secrets.PROD_APP_KEY }}"
               DB_NAME="${{ secrets.PROD_DB_NAME }}"
               DB_USER="${{ secrets.PROD_DB_USERNAME }}"
@@ -39,7 +39,7 @@ jobs:
               COMPOSE="docker-compose.dev.yml"
               APP_ENV="local"
               APP_DEBUG=true
-              APP_NAME="Bunga Bucket Dev"
+              APP_NAME="Bunga_Bucket_Dev"
               DB_NAME="${{ secrets.DEV_DB_NAME }}"
               DB_USER="${{ secrets.DEV_DB_USERNAME }}"
               DB_PASS="${{ secrets.DEV_DB_PASSWORD }}"
