@@ -14,11 +14,12 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copy everything first
+# Copy composer files and install deps (no scripts yet)
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-scripts
+
+# Copy full project
 COPY . .
 
-# Then install composer dependencies
-RUN composer install --no-dev --optimize-autoloader
-
-COPY . .
-RUN php artisan key:generate --show > /tmp/app_key.txt
+# Now run artisan commands safely
+RUN php artisan package:discover --ansi
