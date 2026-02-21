@@ -3,14 +3,13 @@ version: "3.9"
 services:
   app:
     build:
-      dockerfile: docker/Dockerfile.prod
-      context: .
+      dockerfile: docker/Dockerfile.dev
     volumes:
-      - .bungabucket:/var/www/html  # host folder mapped to container
+      - .:/var/www/html  # <-- map full project folder, not hidden folder
     environment:
-      APP_ENV: production
-      APP_DEBUG: false
-      APP_KEY: ${APP_KEY}            # set via SSH deploy
+      APP_ENV: local
+      APP_DEBUG: true
+      APP_KEY: ${APP_KEY}
     ports:
       - "5050:80"
       - "9000:9000"
