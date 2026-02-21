@@ -21,15 +21,23 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+
             if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-                DEPLOY_DIR="/home/bungabucket/bungabucket-prod/florist"
+                DEPLOY_DIR="/home/${{ secrets.VPS_USER }}/bungabucket-prod/florist"
                 COMPOSE_FILE="docker-compose.prod.yml"
                 ENV_CONTENT="${{ secrets.PROD_ENV }}"
             else
-                DEPLOY_DIR="/home/bungabucket/bungabucket-dev/florist"
+                DEPLOY_DIR="/home/${{ secrets.VPS_USER }}/bungabucket-dev/florist"
                 COMPOSE_FILE="docker-compose.dev.yml"
                 ENV_CONTENT="${{ secrets.DEV_ENV }}"
             fi
+
+            # Make directory safe for git
+            git config --global --add safe.directory $DEPLOY_DIR
+
+            # Fix permissions
+            chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} $DEPLOY_DIR
+            chmod -R 775 $DEPLOY_DIR
 
             cd $DEPLOY_DIR || exit 1
 
@@ -37,14 +45,15 @@ jobs:
             git fetch origin
             git reset --hard origin/${{ github.ref == 'refs/heads/main' && 'main' || 'dev' }}
 
-            # Write env from secret
-            echo "$ENV_CONTENT" > .env
+            # Write .env safely
+            cat <<EOF > .env
+            $ENV_CONTENT
+            EOF
 
             # Restart docker
             docker compose -f $COMPOSE_FILE down
             docker compose -f $COMPOSE_FILE up -d --build
 
-            
             # # Choose branch
             # if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             #     BRANCH="main"
