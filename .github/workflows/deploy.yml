@@ -18,9 +18,8 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            BRANCH=${GITHUB_REF##*/}
+            BRANCH=${{ github.ref_name }}   # <-- pass branch from GH Actions
 
-            # Set folder and compose file based on branch
             if [ "$BRANCH" = "main" ]; then
               DIR="bungabucket"
               COMPOSE="docker-compose.prod.yml"
@@ -29,27 +28,17 @@ jobs:
               COMPOSE="docker-compose.dev.yml"
             fi
 
-            cd ~ || exit 1   # go to SSH user's home
+            cd ~ || exit 1
 
-            # Remove existing folder if it exists
             if [ -d "$DIR" ]; then
               echo "Removing existing folder $DIR..."
               rm -rf "$DIR"
             fi
 
-            # Create folder (optional, git clone will create it anyway)
-            mkdir -p "$DIR"
-
-            # Clone repository into the folder
             echo "Cloning branch $BRANCH into $DIR..."
-            git clone --branch "$BRANCH" https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git "$DIR" || exit 1
+            git clone --branch "$BRANCH" https://github.com/Blackaiza/florist.git "$DIR" || exit 1
+            cd "$DIR" || exit 1
 
-            cd "$DIR" || exit 1  # go inside the repo
-
-            # Optional: generate .env here (for dev or prod)
-            # printf "APP_NAME=...\n" > .env
-
-            # Run Docker only after repo is ready
             echo "Starting Docker..."
             docker compose -f docker-compose.yml -f "$COMPOSE" down || true
             docker compose -f docker-compose.yml -f "$COMPOSE" up --build -d
