@@ -21,30 +21,54 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # Choose branch
             if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-                BRANCH="main"
+                DEPLOY_DIR="/home/bungabucket/bungabucket-prod/florist"
                 COMPOSE_FILE="docker-compose.prod.yml"
-                ENV_FILE=".env"
                 ENV_CONTENT="${{ secrets.PROD_ENV }}"
             else
-                BRANCH="dev"
+                DEPLOY_DIR="/home/bungabucket/bungabucket-dev/florist"
                 COMPOSE_FILE="docker-compose.dev.yml"
-                ENV_FILE=".env"
                 ENV_CONTENT="${{ secrets.DEV_ENV }}"
             fi
 
-            # If folder is not a git repo, clone it
-            if [ ! -d .git ]; then
-                git clone -b $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git .
-            else
-                git fetch origin $BRANCH
-                git reset --hard origin/$BRANCH
-            fi
+            cd $DEPLOY_DIR || exit 1
 
-            # Write environment from secret
-            echo "$ENV_CONTENT" > $ENV_FILE
+            # Pull latest changes
+            git fetch origin
+            git reset --hard origin/${{ github.ref == 'refs/heads/main' && 'main' || 'dev' }}
+
+            # Write env from secret
+            echo "$ENV_CONTENT" > .env
 
             # Restart docker
             docker compose -f $COMPOSE_FILE down
             docker compose -f $COMPOSE_FILE up -d --build
+
+            
+            # # Choose branch
+            # if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            #     BRANCH="main"
+            #     COMPOSE_FILE="docker-compose.prod.yml"
+            #     ENV_FILE=".env"
+            #     ENV_CONTENT="${{ secrets.PROD_ENV }}"
+            # else
+            #     BRANCH="dev"
+            #     COMPOSE_FILE="docker-compose.dev.yml"
+            #     ENV_FILE=".env"
+            #     ENV_CONTENT="${{ secrets.DEV_ENV }}"
+            # fi
+
+            # # If folder is not a git repo, clone it
+            # if [ ! -d .git ]; then
+            #     git clone -b $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git .
+            # else
+            #     git fetch origin $BRANCH
+            #     git reset --hard origin/$BRANCH
+            # fi
+
+            # # Write environment from secret
+            # echo "$ENV_CONTENT" > $ENV_FILE
+
+            # # Restart docker
+            # docker compose -f $COMPOSE_FILE down
+            # docker compose -f $COMPOSE_FILE up -d --build
