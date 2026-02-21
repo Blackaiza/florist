@@ -42,7 +42,7 @@ jobs:
 
             # Pull latest changes safely
             if [ ! -d .git ]; then
-                git clone -b $BRANCH https://***@github.com/Blackaiza/florist.git .
+                git clone -b $BRANCH https://${{ secrets.GIT_TOKEN }}@github.com/Blackaiza/florist.git .
             else
                 git fetch origin
                 git reset --hard origin/$BRANCH
