@@ -4,35 +4,26 @@ services:
   app:
     build:
       context: .
-      dockerfile: docker/Dockerfile.dev
-    volumes:
-      - ./:/var/www/html
+      dockerfile: docker/Dockerfile
+    container_name: bungabucket-dev
+    restart: unless-stopped
     ports:
-      - "5050:80"   # <-- this exposes Apache inside Docker to host
-    environment:
-      APP_ENV: local
-      APP_DEBUG: true
-
+      - "8002:80"
+    env_file:
+      - .env
     depends_on:
       - mysql
-      - redis
 
   mysql:
     image: mysql:8
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
       MYSQL_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "3306:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
-
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
+      - mysql_dev:/var/lib/mysql
 
 volumes:
-  mysql_data:
+  mysql_dev:
