@@ -43,4 +43,7 @@ return [
     Webkul\Tax\Providers\TaxServiceProvider::class,
     Webkul\Theme\Providers\ThemeServiceProvider::class,
     Webkul\User\Providers\UserServiceProvider::class,
+    Webkul\CustomStripePayment\Providers\CustomStripePaymentServiceProvider::class,
+    Webkul\CustomExpressShipping\Providers\CustomExpressShippingServiceProvider::class,
+
 ];

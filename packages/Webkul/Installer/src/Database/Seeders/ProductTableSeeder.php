@@ -1329,6 +1329,7 @@ class ProductTableSeeder extends Seeder
                     'color'                 => 2,
                     'size'                  => 8,
                 ],
+
             ];
         }
 
