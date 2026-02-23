@@ -1,17 +1,17 @@
 {
-  "_veeValidate-BnSi22_q.js": {
-    "file": "assets/veeValidate-BnSi22_q.js",
+  "_veeValidate-BPHuiuFA.js": {
+    "file": "assets/veeValidate-BPHuiuFA.js",
     "name": "veeValidate",
     "imports": [
-      "_vue-DaFNcYaj.js"
+      "_vue-BtG0a6yo.js"
     ]
   },
-  "_vendor-CW6uOYFM.js": {
-    "file": "assets/vendor-CW6uOYFM.js",
+  "_vendor-CKdKapBW.js": {
+    "file": "assets/vendor-CKdKapBW.js",
     "name": "vendor"
   },
-  "_vue-DaFNcYaj.js": {
-    "file": "assets/vue-DaFNcYaj.js",
+  "_vue-BtG0a6yo.js": {
+    "file": "assets/vue-BtG0a6yo.js",
     "name": "vue"
   },
   "src/Resources/assets/css/app.css": {
@@ -35,8 +35,12 @@
     "file": "assets/empty-dwn-product-DYRIKFWL.png",
     "src": "src/Resources/assets/images/empty-dwn-product.png"
   },
+  "src/Resources/assets/images/favicon-1.ico": {
+    "file": "assets/favicon-1-Df9chQdB.ico",
+    "src": "src/Resources/assets/images/favicon-1.ico"
+  },
   "src/Resources/assets/images/favicon.ico": {
-    "file": "assets/favicon-Df9chQdB.ico",
+    "file": "assets/favicon-Cn-Z4dfy.ico",
     "src": "src/Resources/assets/images/favicon.ico"
   },
   "src/Resources/assets/images/hero-image.jpg": {
@@ -52,7 +56,7 @@
     "src": "src/Resources/assets/images/large-product-placeholder.webp"
   },
   "src/Resources/assets/images/logo.svg": {
-    "file": "assets/logo-CZWQQgOF.svg",
+    "file": "assets/logo-CZ6yURII.svg",
     "src": "src/Resources/assets/images/logo.svg"
   },
   "src/Resources/assets/images/medium-product-placeholder.webp": {
@@ -96,14 +100,14 @@
     "src": "src/Resources/assets/images/wishlist.png"
   },
   "src/Resources/assets/js/app.js": {
-    "file": "assets/app-DY2zjNPx.js",
+    "file": "assets/app-BJiQvSay.js",
     "name": "app",
     "src": "src/Resources/assets/js/app.js",
     "isEntry": true,
     "imports": [
-      "_vue-DaFNcYaj.js",
-      "_vendor-CW6uOYFM.js",
-      "_veeValidate-BnSi22_q.js"
+      "_vue-BtG0a6yo.js",
+      "_vendor-CKdKapBW.js",
+      "_veeValidate-BPHuiuFA.js"
     ],
     "css": [
       "assets/app-DsP8OK1c.css"
